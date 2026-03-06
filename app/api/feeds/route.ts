@@ -68,9 +68,12 @@ const FEEDS: Record<string, { name: string; url: string; category: string; badge
     ],
 };
 
+const VALID_CATEGORIES = new Set(Object.keys(FEEDS));
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category') || 'industry';
+    const rawCategory = searchParams.get('category') || 'industry';
+    const category = VALID_CATEGORIES.has(rawCategory) ? rawCategory : 'industry';
 
     const cacheKey = category;
     const cached = cache.get(cacheKey);
@@ -78,7 +81,7 @@ export async function GET(request: Request) {
         return NextResponse.json(cached.data);
     }
 
-    const feedList = FEEDS[category] || FEEDS.industry;
+    const feedList = FEEDS[category];
     const results: { title: string; link: string; pubDate: string; source: string; badge?: string }[] = [];
 
     await Promise.allSettled(

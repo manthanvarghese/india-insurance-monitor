@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import NewsFeedPanel from '@/components/NewsFeedPanel';
 import MarketPanel from '@/components/MarketPanel';
@@ -15,10 +15,10 @@ import TickerBar from '@/components/TickerBar';
 const MapPanel = dynamic(() => import('@/components/MapPanel'), { ssr: false });
 
 export default function Dashboard() {
-  const [time, setTime] = useState(new Date());
-  const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
+    setTime(new Date());
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);

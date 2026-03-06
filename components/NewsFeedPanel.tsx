@@ -107,7 +107,7 @@ export default function NewsFeedPanel({ title, category, badge, badgeColor, icon
                 ) : (
                     items.map((item, i) => (
                         <a
-                            key={i}
+                            key={item.link || `${item.source}-${i}`}
                             href={item.link || '#'}
                             target="_blank"
                             rel="noopener noreferrer"

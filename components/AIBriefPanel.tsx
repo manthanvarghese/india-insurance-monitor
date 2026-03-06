@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from 'react';
 
+const SUMMARY_DATE = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+
 export default function AIBriefPanel() {
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
+
+    function handleRefresh() {
+        setProgress(0);
+        setLoading(true);
+    }
 
     useEffect(() => {
         if (loading) {
@@ -56,7 +63,7 @@ export default function AIBriefPanel() {
                         }}>
                             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-blue)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span className="live-dot" style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%' }} />
-                                EXECUTIVE SUMMARY — MARCH 2025
+                                EXECUTIVE SUMMARY — {SUMMARY_DATE}
                             </div>
                             <p style={{ fontSize: '11px', lineHeight: '1.6', color: 'var(--text-primary)', margin: 0 }}>
                                 Industry focus is heavily weighted toward IRDAI&apos;s new cyber disclosure framework. Reinsurance markets are signaling a 12% rise in nat-cat capacity for India, though medical inflation continues to exceed actuarial baselines. Motor TP revision discussions are surfacing as a key H1 priority.
@@ -95,7 +102,7 @@ export default function AIBriefPanel() {
                             </div>
                         </div>
 
-                        <button style={{
+                        <button onClick={handleRefresh} style={{
                             marginTop: '16px',
                             width: '100%',
                             padding: '6px',

@@ -1,11 +1,11 @@
 'use client';
 
 interface HeaderBarProps {
-    time: Date;
+    time: Date | null;
 }
 
 export default function HeaderBar({ time }: HeaderBarProps) {
-    const isWeekend = time.getDay() === 0 || time.getDay() === 6;
+    const isWeekend = time ? time.getDay() === 0 || time.getDay() === 6 : false;
 
     return (
         <div style={{
@@ -109,16 +109,16 @@ export default function HeaderBar({ time }: HeaderBarProps) {
                         fontFamily: "'JetBrains Mono', monospace",
                         letterSpacing: '0.05em',
                     }}>
-                        {time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })} IST
+                        {time ? time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '--:--:--'} IST
                     </div>
                     <div style={{ fontSize: '10px', color: '#475569' }}>
-                        {time.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                        {time ? time.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : ''}
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', fontSize: '10px', color: '#475569' }}>
-                    <span>NYC {new Date(time.getTime() - 10.5 * 3600000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                    <span>LDN {new Date(time.getTime() - 5.5 * 3600000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                    <span>ZRH {new Date(time.getTime() - 4.5 * 3600000).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                    <span>NYC {time ? time.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}</span>
+                    <span>LDN {time ? time.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}</span>
+                    <span>ZRH {time ? time.toLocaleTimeString('de-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}</span>
                 </div>
             </div>
         </div>

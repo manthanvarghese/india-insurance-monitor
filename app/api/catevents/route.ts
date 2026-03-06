@@ -1,20 +1,8 @@
 import { NextResponse } from 'next/server';
+import type { CatEvent } from '@/types';
 
 const cache = new Map<string, { data: unknown; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-interface CatEvent {
-    id: string;
-    title: string;
-    type: 'earthquake' | 'flood' | 'cyclone' | 'fire' | 'other';
-    severity: 'low' | 'medium' | 'high' | 'critical';
-    location: string;
-    lat: number;
-    lng: number;
-    time: string;
-    source: string;
-    url?: string;
-}
 
 async function fetchEarthquakes(): Promise<CatEvent[]> {
     try {

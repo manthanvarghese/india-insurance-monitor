@@ -1,18 +1,9 @@
 import { NextResponse } from 'next/server';
+import type { MarketQuote } from '@/types';
 
 // In-memory cache
 const cache = new Map<string, { data: unknown; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-interface MarketQuote {
-    symbol: string;
-    label: string;
-    price: number | null;
-    change: number | null;
-    changePercent: number | null;
-    currency: string;
-    type: 'index' | 'bond' | 'forex' | 'equity';
-}
 
 async function fetchQuote(symbol: string): Promise<{ price: number; change: number; changePercent: number } | null> {
     try {
@@ -45,7 +36,7 @@ const INSTRUMENTS: { symbol: string; label: string; currency: string; type: Mark
     { symbol: 'NIFTYBANK.NS', label: 'Nifty Bank', currency: 'INR', type: 'index' },
     { symbol: 'INDIAVIX.NS', label: 'India VIX', currency: 'INR', type: 'index' },
     { symbol: 'INR=X', label: 'USD/INR', currency: 'INR', type: 'forex' },
-    { symbol: 'EURRUB=X', label: 'EUR/INR', currency: 'INR', type: 'forex' },
+    { symbol: 'EURINR=X', label: 'EUR/INR', currency: 'INR', type: 'forex' },
     { symbol: '^TNX', label: 'US 10Y', currency: 'USD', type: 'bond' },
     { symbol: 'LICI.NS', label: 'LIC India', currency: 'INR', type: 'equity' },
     { symbol: 'HDFCLIFE.NS', label: 'HDFC Life', currency: 'INR', type: 'equity' },

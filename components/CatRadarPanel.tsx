@@ -1,18 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-interface CatEvent {
-    id: string;
-    title: string;
-    type: 'earthquake' | 'flood' | 'cyclone' | 'fire' | 'other';
-    severity: 'low' | 'medium' | 'high' | 'critical';
-    location: string;
-    lat: number;
-    lng: number;
-    time: string;
-    source: string;
-}
+import type { CatEvent } from '@/types';
 
 const SEVERITY_COLORS = {
     low: '#10b981',
