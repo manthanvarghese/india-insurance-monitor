@@ -6,11 +6,11 @@ import NewsFeedPanel from '@/components/NewsFeedPanel';
 import MarketPanel from '@/components/MarketPanel';
 import CatRadarPanel from '@/components/CatRadarPanel';
 import CompetitorPanel from '@/components/CompetitorPanel';
-import AIBriefPanel from '@/components/AIBriefPanel';
 import ReinsurancePanel from '@/components/ReinsurancePanel';
 import MacroPanel from '@/components/MacroPanel';
 import HeaderBar from '@/components/HeaderBar';
 import TickerBar from '@/components/TickerBar';
+import LiveNewsPanel from '@/components/LiveNewsPanel';
 
 const MapPanel = dynamic(() => import('@/components/MapPanel'), { ssr: false });
 
@@ -69,9 +69,9 @@ export default function Dashboard() {
           <CatRadarPanel />
         </div>
 
-        {/* Row 1, Col 4: AI Briefing */}
+        {/* Row 1, Col 4: Live News */}
         <div style={{ gridRow: '1 / 2', gridColumn: '4 / 5' }} className="panel">
-          <AIBriefPanel />
+          <LiveNewsPanel />
         </div>
 
         {/* Row 2, Col 2: Market Pulse */}
