@@ -15,6 +15,7 @@ export default function MapPanel() {
         catEvents: true,
         hospitals: false,
     });
+    const [webglError, setWebglError] = useState(false);
 
     // Toggle marker visibility when layer state changes
     useEffect(() => {
@@ -32,106 +33,105 @@ export default function MapPanel() {
     useEffect(() => {
         if (!mapContainer.current || map.current) return;
 
-        map.current = new maplibregl.Map({
-            container: mapContainer.current,
-            style: {
-                version: 8,
-                sources: {
-                    'osm': {
-                        type: 'raster',
-                        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                        tileSize: 256,
-                        attribution: '&copy; OpenStreetMap Contributors',
-                    }
-                },
-                layers: [
-                    {
-                        id: 'osm',
-                        type: 'raster',
-                        source: 'osm',
-                        paint: {
-                            'raster-opacity': 0.3,
-                            'raster-hue-rotate': 180,
-                            'raster-brightness-max': 0.4,
-                            'raster-saturation': -0.8,
+        try {
+            map.current = new maplibregl.Map({
+                container: mapContainer.current,
+                style: {
+                    version: 8,
+                    sources: {
+                        'osm': {
+                            type: 'raster',
+                            tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                            tileSize: 256,
+                            attribution: '&copy; OpenStreetMap Contributors',
                         }
-                    }
-                ],
-            },
-            center: [78.9629, 23.5937],
-            zoom: 4,
-            pitch: 0,
-        });
-
-        map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
-
-        map.current.on('load', async () => {
-            // Hotspot markers
-            const hotspots = [
-                { name: 'Mumbai Corridor', coords: [72.8777, 19.0760] as [number, number], risk: 'high' },
-                { name: 'Delhi NCR', coords: [77.2090, 28.6139] as [number, number], risk: 'high' },
-                { name: 'Bangalore Tech Center', coords: [77.5946, 12.9716] as [number, number], risk: 'medium' },
-            ];
-
-            hotspots.forEach(h => {
-                const el = document.createElement('div');
-                el.className = 'live-dot';
-                el.style.width = '12px';
-                el.style.height = '12px';
-                el.style.borderRadius = '50%';
-                el.style.background = h.risk === 'high' ? '#ef4444' : '#f59e0b';
-                el.style.boxShadow = `0 0 10px ${h.risk === 'high' ? '#ef4444' : '#f59e0b'}`;
-
-                const marker = new maplibregl.Marker(el)
-                    .setLngLat(h.coords)
-                    .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<b>${h.name}</b><br/>Severity: ${h.risk.toUpperCase()}`))
-                    .addTo(map.current!);
-                hotspotMarkers.current.push(marker);
+                    },
+                    layers: [
+                        {
+                            id: 'osm',
+                            type: 'raster',
+                            source: 'osm',
+                            paint: {
+                                'raster-opacity': 0.3,
+                                'raster-hue-rotate': 180,
+                                'raster-brightness-max': 0.4,
+                                'raster-saturation': -0.8,
+                            }
+                        }
+                    ],
+                },
+                center: [78.9629, 23.5937],
+                zoom: 4,
+                pitch: 0,
             });
 
-            // Cat event markers from API
-            try {
-                const res = await fetch('/api/catevents');
-                const events: CatEvent[] = await res.json();
-                const catColors: Record<CatEvent['severity'], string> = {
-                    critical: '#991b1b',
-                    high: '#ef4444',
-                    medium: '#f59e0b',
-                    low: '#10b981',
-                };
-                const catIcons: Record<CatEvent['type'], string> = {
-                    earthquake: '🌋', flood: '🌊', cyclone: '🌀', fire: '🔥', other: '📍',
-                };
+            map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-                events.forEach(ev => {
+            map.current.on('load', async () => {
+                const hotspots = [
+                    { name: 'Mumbai Corridor', coords: [72.8777, 19.0760] as [number, number], risk: 'high' },
+                    { name: 'Delhi NCR', coords: [77.2090, 28.6139] as [number, number], risk: 'high' },
+                    { name: 'Bangalore Tech Center', coords: [77.5946, 12.9716] as [number, number], risk: 'medium' },
+                ];
+
+                hotspots.forEach(h => {
                     const el = document.createElement('div');
-                    el.title = ev.title;
-                    el.style.width = '20px';
-                    el.style.height = '20px';
+                    el.className = 'live-dot';
+                    el.style.width = '12px';
+                    el.style.height = '12px';
                     el.style.borderRadius = '50%';
-                    el.style.background = catColors[ev.severity];
-                    el.style.border = '2px solid rgba(255,255,255,0.3)';
-                    el.style.display = 'flex';
-                    el.style.alignItems = 'center';
-                    el.style.justifyContent = 'center';
-                    el.style.fontSize = '10px';
-                    el.style.cursor = 'pointer';
-                    el.textContent = catIcons[ev.type];
+                    el.style.background = h.risk === 'high' ? '#ef4444' : '#f59e0b';
+                    el.style.boxShadow = `0 0 10px ${h.risk === 'high' ? '#ef4444' : '#f59e0b'}`;
 
                     const marker = new maplibregl.Marker(el)
-                        .setLngLat([ev.lng, ev.lat])
-                        .setPopup(
-                            new maplibregl.Popup({ offset: 25 }).setHTML(
-                                `<b>${ev.title}</b><br/>Severity: ${ev.severity.toUpperCase()}<br/>Source: ${ev.source}`
-                            )
-                        )
+                        .setLngLat(h.coords)
+                        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<b>${h.name}</b><br/>Severity: ${h.risk.toUpperCase()}`))
                         .addTo(map.current!);
-                    catEventMarkers.current.push(marker);
+                    hotspotMarkers.current.push(marker);
                 });
-            } catch {
-                // Cat events failed silently
-            }
-        });
+
+                try {
+                    const res = await fetch('/api/catevents');
+                    const events: CatEvent[] = await res.json();
+                    const catColors: Record<CatEvent['severity'], string> = {
+                        critical: '#991b1b', high: '#ef4444', medium: '#f59e0b', low: '#10b981',
+                    };
+                    const catIcons: Record<CatEvent['type'], string> = {
+                        earthquake: '🌋', flood: '🌊', cyclone: '🌀', fire: '🔥', other: '📍',
+                    };
+
+                    events.forEach(ev => {
+                        const el = document.createElement('div');
+                        el.title = ev.title;
+                        el.style.width = '20px';
+                        el.style.height = '20px';
+                        el.style.borderRadius = '50%';
+                        el.style.background = catColors[ev.severity];
+                        el.style.border = '2px solid rgba(255,255,255,0.3)';
+                        el.style.display = 'flex';
+                        el.style.alignItems = 'center';
+                        el.style.justifyContent = 'center';
+                        el.style.fontSize = '10px';
+                        el.style.cursor = 'pointer';
+                        el.textContent = catIcons[ev.type];
+
+                        const marker = new maplibregl.Marker(el)
+                            .setLngLat([ev.lng, ev.lat])
+                            .setPopup(
+                                new maplibregl.Popup({ offset: 25 }).setHTML(
+                                    `<b>${ev.title}</b><br/>Severity: ${ev.severity.toUpperCase()}<br/>Source: ${ev.source}`
+                                )
+                            )
+                            .addTo(map.current!);
+                        catEventMarkers.current.push(marker);
+                    });
+                } catch {
+                    // Cat events failed silently
+                }
+            });
+        } catch {
+            setWebglError(true);
+        }
 
         return () => {
             map.current?.remove();
@@ -140,6 +140,15 @@ export default function MapPanel() {
             catEventMarkers.current = [];
         };
     }, []);
+
+    if (webglError) {
+        return (
+            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '11px' }}>
+                <span style={{ fontSize: '24px' }}>🗺️</span>
+                <span>Map unavailable — WebGL not supported</span>
+            </div>
+        );
+    }
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
