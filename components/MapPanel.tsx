@@ -1,158 +1,146 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import type { CatEvent } from '@/types';
 
 export default function MapPanel() {
     const mapContainer = useRef<HTMLDivElement>(null);
-    const map = useRef<maplibregl.Map | null>(null);
-    const hotspotMarkers = useRef<maplibregl.Marker[]>([]);
-    const catEventMarkers = useRef<maplibregl.Marker[]>([]);
+    const mapRef = useRef<import('leaflet').Map | null>(null);
     const [layers, setLayers] = useState({
         hotspots: true,
         catEvents: true,
-        hospitals: false,
     });
-    const [webglError, setWebglError] = useState(false);
+    const hotspotLayerRef = useRef<import('leaflet').LayerGroup | null>(null);
+    const catLayerRef = useRef<import('leaflet').LayerGroup | null>(null);
 
-    // Toggle marker visibility when layer state changes
     useEffect(() => {
-        hotspotMarkers.current.forEach(m => {
-            (m.getElement() as HTMLElement).style.display = layers.hotspots ? 'block' : 'none';
-        });
+        if (hotspotLayerRef.current) {
+            const map = mapRef.current;
+            if (!map) return;
+            if (layers.hotspots) hotspotLayerRef.current.addTo(map);
+            else hotspotLayerRef.current.remove();
+        }
     }, [layers.hotspots]);
 
     useEffect(() => {
-        catEventMarkers.current.forEach(m => {
-            (m.getElement() as HTMLElement).style.display = layers.catEvents ? 'block' : 'none';
-        });
+        if (catLayerRef.current) {
+            const map = mapRef.current;
+            if (!map) return;
+            if (layers.catEvents) catLayerRef.current.addTo(map);
+            else catLayerRef.current.remove();
+        }
     }, [layers.catEvents]);
 
     useEffect(() => {
-        if (!mapContainer.current || map.current) return;
+        if (!mapContainer.current || mapRef.current) return;
 
-        try {
-            map.current = new maplibregl.Map({
-                container: mapContainer.current,
-                style: {
-                    version: 8,
-                    sources: {
-                        'osm': {
-                            type: 'raster',
-                            tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                            tileSize: 256,
-                            attribution: '&copy; OpenStreetMap Contributors',
-                        }
-                    },
-                    layers: [
-                        {
-                            id: 'osm',
-                            type: 'raster',
-                            source: 'osm',
-                            paint: {
-                                'raster-opacity': 0.3,
-                                'raster-hue-rotate': 180,
-                                'raster-brightness-max': 0.4,
-                                'raster-saturation': -0.8,
-                            }
-                        }
-                    ],
-                },
-                center: [78.9629, 23.5937],
+        let destroyed = false;
+
+        (async () => {
+            const L = (await import('leaflet')).default;
+            // Fix Leaflet default marker icon path issue with bundlers
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            delete (L.Icon.Default.prototype as any)._getIconUrl;
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            });
+
+            if (destroyed || !mapContainer.current) return;
+
+            const map = L.map(mapContainer.current, {
+                center: [23.5937, 78.9629],
                 zoom: 4,
-                pitch: 0,
+                zoomControl: false,
             });
+            mapRef.current = map;
 
-            map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap Contributors',
+                opacity: 0.35,
+                className: 'map-tiles-dark',
+            }).addTo(map);
 
-            map.current.on('load', async () => {
-                const hotspots = [
-                    { name: 'Mumbai Corridor', coords: [72.8777, 19.0760] as [number, number], risk: 'high' },
-                    { name: 'Delhi NCR', coords: [77.2090, 28.6139] as [number, number], risk: 'high' },
-                    { name: 'Bangalore Tech Center', coords: [77.5946, 12.9716] as [number, number], risk: 'medium' },
-                ];
+            L.control.zoom({ position: 'topright' }).addTo(map);
 
-                hotspots.forEach(h => {
-                    const el = document.createElement('div');
-                    el.className = 'live-dot';
-                    el.style.width = '12px';
-                    el.style.height = '12px';
-                    el.style.borderRadius = '50%';
-                    el.style.background = h.risk === 'high' ? '#ef4444' : '#f59e0b';
-                    el.style.boxShadow = `0 0 10px ${h.risk === 'high' ? '#ef4444' : '#f59e0b'}`;
+            // Hotspot markers
+            const hotspots = [
+                { name: 'Mumbai Corridor', lat: 19.0760, lng: 72.8777, risk: 'high' },
+                { name: 'Delhi NCR', lat: 28.6139, lng: 77.2090, risk: 'high' },
+                { name: 'Bangalore Tech Center', lat: 12.9716, lng: 77.5946, risk: 'medium' },
+            ];
 
-                    const marker = new maplibregl.Marker(el)
-                        .setLngLat(h.coords)
-                        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<b>${h.name}</b><br/>Severity: ${h.risk.toUpperCase()}`))
-                        .addTo(map.current!);
-                    hotspotMarkers.current.push(marker);
+            const hotspotLayer = L.layerGroup();
+            hotspots.forEach(h => {
+                const color = h.risk === 'high' ? '#ef4444' : '#f59e0b';
+                const icon = L.divIcon({
+                    className: '',
+                    html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};box-shadow:0 0 10px ${color};"></div>`,
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6],
                 });
-
-                try {
-                    const res = await fetch('/api/catevents');
-                    const events: CatEvent[] = await res.json();
-                    const catColors: Record<CatEvent['severity'], string> = {
-                        critical: '#991b1b', high: '#ef4444', medium: '#f59e0b', low: '#10b981',
-                    };
-                    const catIcons: Record<CatEvent['type'], string> = {
-                        earthquake: '🌋', flood: '🌊', cyclone: '🌀', fire: '🔥', other: '📍',
-                    };
-
-                    events.forEach(ev => {
-                        const el = document.createElement('div');
-                        el.title = ev.title;
-                        el.style.width = '20px';
-                        el.style.height = '20px';
-                        el.style.borderRadius = '50%';
-                        el.style.background = catColors[ev.severity];
-                        el.style.border = '2px solid rgba(255,255,255,0.3)';
-                        el.style.display = 'flex';
-                        el.style.alignItems = 'center';
-                        el.style.justifyContent = 'center';
-                        el.style.fontSize = '10px';
-                        el.style.cursor = 'pointer';
-                        el.textContent = catIcons[ev.type];
-
-                        const marker = new maplibregl.Marker(el)
-                            .setLngLat([ev.lng, ev.lat])
-                            .setPopup(
-                                new maplibregl.Popup({ offset: 25 }).setHTML(
-                                    `<b>${ev.title}</b><br/>Severity: ${ev.severity.toUpperCase()}<br/>Source: ${ev.source}`
-                                )
-                            )
-                            .addTo(map.current!);
-                        catEventMarkers.current.push(marker);
-                    });
-                } catch {
-                    // Cat events failed silently
-                }
+                L.marker([h.lat, h.lng], { icon })
+                    .bindPopup(`<b>${h.name}</b><br/>Severity: ${h.risk.toUpperCase()}`)
+                    .addTo(hotspotLayer);
             });
-        } catch {
-            setWebglError(true);
-        }
+            hotspotLayerRef.current = hotspotLayer;
+            if (layers.hotspots) hotspotLayer.addTo(map);
+
+            // Cat event markers
+            const catLayer = L.layerGroup();
+            catLayerRef.current = catLayer;
+            if (layers.catEvents) catLayer.addTo(map);
+
+            try {
+                const res = await fetch('/api/catevents');
+                const events: CatEvent[] = await res.json();
+                const catColors: Record<CatEvent['severity'], string> = {
+                    critical: '#991b1b', high: '#ef4444', medium: '#f59e0b', low: '#10b981',
+                };
+                const catIcons: Record<CatEvent['type'], string> = {
+                    earthquake: '🌋', flood: '🌊', cyclone: '🌀', fire: '🔥', other: '📍',
+                };
+
+                events.forEach(ev => {
+                    const icon = L.divIcon({
+                        className: '',
+                        html: `<div style="width:20px;height:20px;border-radius:50%;background:${catColors[ev.severity]};border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;">${catIcons[ev.type]}</div>`,
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10],
+                    });
+                    L.marker([ev.lat, ev.lng], { icon })
+                        .bindPopup(`<b>${ev.title}</b><br/>Severity: ${ev.severity.toUpperCase()}<br/>Source: ${ev.source}`)
+                        .addTo(catLayer);
+                });
+            } catch {
+                // Cat events failed silently
+            }
+        })();
 
         return () => {
-            map.current?.remove();
-            map.current = null;
-            hotspotMarkers.current = [];
-            catEventMarkers.current = [];
+            destroyed = true;
+            mapRef.current?.remove();
+            mapRef.current = null;
+            hotspotLayerRef.current = null;
+            catLayerRef.current = null;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    if (webglError) {
-        return (
-            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '11px' }}>
-                <span style={{ fontSize: '24px' }}>🗺️</span>
-                <span>Map unavailable — WebGL not supported</span>
-            </div>
-        );
-    }
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            <div ref={mapContainer} style={{ width: '100%', height: '100%' }} id="map-container" />
+            <link
+                rel="stylesheet"
+                href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+            />
+            <style>{`
+                .map-tiles-dark { filter: invert(1) hue-rotate(180deg) brightness(0.4) saturate(0.3); }
+                .leaflet-popup-content-wrapper { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
+                .leaflet-popup-tip { background: #1e293b; }
+            `}</style>
+
+            <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
             {/* Map legend/controls overlay */}
             <div style={{
@@ -164,7 +152,7 @@ export default function MapPanel() {
                 borderRadius: '6px',
                 padding: '10px',
                 backdropFilter: 'blur(4px)',
-                zIndex: 10,
+                zIndex: 1000,
                 width: '160px',
             }}>
                 <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.1em', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase' }}>
@@ -188,10 +176,10 @@ export default function MapPanel() {
                 <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px' }}>SEVERITY LEGEND</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} /> High Risk
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} /> High Risk
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} /> Elevated
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} /> Elevated
                     </div>
                 </div>
             </div>
